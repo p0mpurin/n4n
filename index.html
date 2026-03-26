@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Niche4Niche Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="editor.css" />
+</head>
+<body>
+  <div id="studio-app" class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">N4N</span>
+        <div>
+          <div class="brand-name">Niche4Niche Studio</div>
+          <div class="brand-sub">Build one-of-one music identity pages</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <select id="profile-select" class="input slim-select"></select>
+        <button id="btn-new-profile" class="btn ghost" type="button" title="New profile">New</button>
+        <button id="btn-duplicate-profile" class="btn ghost" type="button" title="Duplicate profile">Duplicate</button>
+        <button id="btn-delete-profile" class="btn ghost danger" type="button" title="Delete profile">Delete</button>
+        <div class="topbar-divider"></div>
+        <button id="btn-open-public" class="btn ghost" type="button">Open public route</button>
+        <button id="btn-export" class="btn ghost" type="button">Export</button>
+        <label class="btn ghost file-label">
+          Import
+          <input id="import-file" type="file" accept="application/json" hidden />
+        </label>
+        <button id="btn-reset" class="btn ghost danger" type="button">Reset all</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <!-- Left Panel: Block List -->
+      <aside class="panel panel-block-list">
+        <div class="panel-header">
+          <h2>Page Blocks</h2>
+          <button id="btn-add-block" class="btn ghost small">+ Add block</button>
+        </div>
+        <div class="block-list-wrap">
+          <ul id="block-list-ui" class="block-list"></ul>
+          <p id="block-empty" class="empty">No blocks in this profile yet. Add one to get started!</p>
+        </div>
+      </aside>
+
+      <!-- Middle Panel: Config -->
+      <section class="panel panel-config">
+        <div class="config-tabs">
+          <button class="tab-btn active" id="tab-btn-block">Block Setup</button>
+          <button class="tab-btn" id="tab-btn-global">Global Styling</button>
+        </div>
+
+        <div id="tab-content-block" class="tab-content active">
+          <div id="block-config-empty" class="empty-state">
+            <div class="empty-icon">🎨</div>
+            <p>Select a block from the left to edit its content.</p>
+          </div>
+          <div id="block-config-form" class="hidden">
+            <div class="card">
+              <div class="config-header">
+                <div>
+                  <div class="config-type-label" id="config-block-type">Block Type</div>
+                  <h2 id="config-block-name" class="config-name">Edit Block</h2>
+                </div>
+                <button id="btn-delete-block" class="btn ghost danger small" title="Delete block">Delete</button>
+              </div>
+              <div id="config-fields" class="config-fields">
+                <!-- Dynamically injected fields go here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-content-global" class="tab-content hidden">
+          <div class="card">
+            <h2>Identity</h2>
+            <label class="label" for="profile-handle">Handle (used in URL)</label>
+            <input id="profile-handle" class="input mono" placeholder="your-handle" />
+            <label class="label" for="profile-display-name">Page Title</label>
+            <input id="profile-display-name" class="input" placeholder="Your Name" />
+            <label class="label" for="profile-bio">Meta Description / Bio</label>
+            <textarea id="profile-bio" class="textarea" rows="2" placeholder="Search engine snippet..."></textarea>
+          </div>
+          <div class="card">
+            <h2>Layout Engine</h2>
+            <p class="hint">Make each profile structurally unique: container, grid, spacing, and card surface.</p>
+            <label class="label" for="layout-mode">Block flow</label>
+            <select id="layout-mode" class="input">
+              <option value="stack">Stack (editorial)</option>
+              <option value="grid">Grid (cards)</option>
+              <option value="masonry">Masonry (staggered)</option>
+            </select>
+            <label class="label" for="layout-max-width">Content width (px)</label>
+            <input id="layout-max-width" class="input mono" type="number" min="560" max="1600" step="10" />
+            <label class="label" for="layout-columns">Desktop columns</label>
+            <select id="layout-columns" class="input">
+              <option value="1">1 column</option>
+              <option value="2">2 columns</option>
+              <option value="3">3 columns</option>
+            </select>
+            <label class="label" for="layout-gap">Block gap (px)</label>
+            <input id="layout-gap" class="input mono" type="number" min="0" max="80" step="1" />
+            <label class="label" for="layout-padding">Page padding (px)</label>
+            <input id="layout-padding" class="input mono" type="number" min="0" max="120" step="1" />
+            <label class="label" for="layout-card-style">Block surface style</label>
+            <select id="layout-card-style" class="input">
+              <option value="none">None (raw)</option>
+              <option value="soft">Soft</option>
+              <option value="glass">Glass</option>
+              <option value="solid">Solid</option>
+            </select>
+            <label class="label" for="layout-radius">Card radius (px)</label>
+            <input id="layout-radius" class="input mono" type="number" min="0" max="48" step="1" />
+            <label class="label" for="layout-align">Default text align</label>
+            <select id="layout-align" class="input">
+              <option value="left">Left</option>
+              <option value="center">Center</option>
+            </select>
+          </div>
+          <div class="card">
+            <h2>Theme & Custom CSS</h2>
+            <p class="hint">Style <code>body</code>, <code>.n4n-hero</code>, <code>.n4n-embed</code>, etc.</p>
+            <textarea id="custom-css" class="textarea mono" rows="12"></textarea>
+          </div>
+          <div class="card">
+            <h2>Custom HTML blocks</h2>
+            <label class="label" for="html-before">Before Blocks</label>
+            <textarea id="html-before" class="textarea mono" rows="4"></textarea>
+            <label class="label" for="html-after">After Blocks</label>
+            <textarea id="html-after" class="textarea mono" rows="4"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Preview -->
+      <main class="panel panel-preview">
+        <div class="preview-header">
+          <h2>Live preview</h2>
+          <p class="hint">Public route: <code id="public-url">#/p/demo</code></p>
+        </div>
+        <div class="preview-frame-wrap">
+          <iframe id="preview" class="preview-frame" title="Niche4Niche preview"></iframe>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Add Block Modal -->
+  <div id="modal-backdrop" class="modal-backdrop hidden"></div>
+  <div id="modal-add-block" class="modal hidden">
+    <div class="modal-content card">
+      <div class="modal-header">
+        <h2>Add a block</h2>
+        <button id="btn-close-modal" class="btn ghost small">✕</button>
+      </div>
+      <div class="block-picker">
+        <button class="btn block-btn" data-type="hero"><span class="icon">🟣</span>Hero Header</button>
+        <button class="btn block-btn" data-type="text"><span class="icon">📝</span>Rich Text</button>
+        <button class="btn block-btn" data-type="section-header"><span class="icon">🏷️</span>Section Header</button>
+        <button class="btn block-btn" data-type="embed"><span class="icon">🎵</span>Single Embed</button>
+        <button class="btn block-btn" data-type="embed-row"><span class="icon">🎹</span>Embed Row</button>
+        <button class="btn block-btn" data-type="link-button"><span class="icon">🔗</span>Link Button</button>
+        <button class="btn block-btn" data-type="divider"><span class="icon">➖</span>Divider</button>
+        <button class="btn block-btn" data-type="custom-html"><span class="icon">⚙️</span>Custom HTML</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

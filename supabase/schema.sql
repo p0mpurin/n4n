@@ -10,6 +10,7 @@ create table if not exists public.profiles (
                   check (username ~ '^[a-z0-9][a-z0-9_-]{1,18}[a-z0-9]$'),
   display_name  text not null default '',
   avatar_url    text not null default '',
+  background_image_url text not null default '',
   bio           text not null default '',
   use_custom_page boolean not null default false,
   custom_page_html text not null default '',
@@ -119,7 +120,47 @@ create trigger friendships_updated_at
   for each row execute function public.handle_updated_at();
 
 
--- 4. VIEW INCREMENT RPC (avoids RLS issues for anonymous viewers)
+-- 4. CSS THEMES (shared gallery — CSS only, instant publish)
+create table if not exists public.css_themes (
+  id            uuid primary key default gen_random_uuid(),
+  author_id     uuid not null references public.profiles(id) on delete cascade,
+  title         text not null
+                  check (char_length(title) >= 1 and char_length(title) <= 120),
+  description   text not null default '',
+  css           text not null
+                  check (char_length(css) >= 1 and char_length(css) <= 262144),
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists css_themes_created_at_idx on public.css_themes (created_at desc);
+create index if not exists css_themes_author_idx on public.css_themes (author_id);
+
+alter table public.css_themes enable row level security;
+
+create policy "Anyone can read css themes"
+  on public.css_themes for select
+  using (true);
+
+create policy "Authors insert css themes"
+  on public.css_themes for insert
+  with check (auth.uid() = author_id);
+
+create policy "Authors update own css themes"
+  on public.css_themes for update
+  using (auth.uid() = author_id)
+  with check (auth.uid() = author_id);
+
+create policy "Authors delete own css themes"
+  on public.css_themes for delete
+  using (auth.uid() = author_id);
+
+create trigger css_themes_updated_at
+  before update on public.css_themes
+  for each row execute function public.handle_updated_at();
+
+
+-- 5. VIEW INCREMENT RPC (avoids RLS issues for anonymous viewers)
 create or replace function public.increment_view(profile_id uuid)
 returns void as $$
 begin
@@ -130,5 +171,8 @@ end;
 $$ language plpgsql security definer;
 
 
--- 5. RESERVED USERNAMES (checked application-side, listed here for reference)
--- studio, login, signup, preview, settings, api, admin, about, help, terms, privacy
+-- 6. RESERVED USERNAMES (checked application-side, listed here for reference)
+-- studio, login, signup, preview, settings, api, admin, about, help, terms, privacy, themes
+
+-- 7. UPGRADE: if you already created profiles before background_image_url existed, run:
+-- alter table public.profiles add column if not exists background_image_url text not null default '';

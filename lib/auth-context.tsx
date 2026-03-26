@@ -21,7 +21,7 @@ interface AuthContextType {
 
 const RESERVED_USERNAMES = new Set([
   'studio', 'login', 'signup', 'preview', 'settings', 'api', 'admin',
-  'about', 'help', 'terms', 'privacy', 'u', 'app', 'auth', 'profile',
+  'about', 'help', 'terms', 'privacy', 'themes', 'u', 'app', 'auth', 'profile',
 ])
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)

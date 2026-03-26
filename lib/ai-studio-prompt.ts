@@ -6,19 +6,9 @@ export type AiStudioPromptOptions = {
   includeLibrarySnapshot: boolean
 }
 
-const APP_CHROME_REFERENCE = `
-.n4n-studio-shell
-.n4n-studio-header
-.n4n-studio-sidebar
-.n4n-studio-tab
-.n4n-studio-preview-toolbar
-.n4n-studio-stats
-.n4n-friends-panel
-.n4n-friends-card
+/** Live profile page wrapper only (optional full-page background). Never target Studio editor classes. */
+const PUBLIC_PAGE_WRAPPER_HINT = `
 .n4n-public-shell
-.n4n-public-bar
-.n4n-public-bar-like
-.n4n-public-bar-friend
 `.trim()
 
 function librarySnapshotForFullHtml(profile: UserProfile): string {
@@ -31,6 +21,14 @@ function librarySnapshotForFullHtml(profile: UserProfile): string {
   ]
   if (profile.avatar) {
     lines.push(`**Avatar URL** (exact): ${profile.avatar}`)
+    lines.push('')
+  }
+  if (profile.backgroundImage?.trim()) {
+    lines.push(`**Background image URL** (exact): ${profile.backgroundImage.trim()}`)
+    lines.push(
+      `**Background scrim** (0–1 alpha on dark overlay): ${(profile.style.backgroundOverlayOpacity ?? 0.35).toFixed(2)}`,
+    )
+    lines.push(`**Background blur (px)**: ${profile.style.backgroundBlurPx ?? 0}`)
     lines.push('')
   }
   for (const s of profile.sections) {
@@ -74,12 +72,14 @@ The host app injects real HTML from the user's music library. That markup contai
 ${DATA_PAGE_MARKUP_REFERENCE}
 \`\`\`
 
-Key classes: \`.avatar\` (circular profile picture), \`.social-stats\` + \`.stat-pill\` (likes/views/friends under bio), \`.stat-like-action\` (the **actual clickable like button**, label should remain like \"N likes\"), \`.song-scroll\` (horizontal scroll variant of \`.song-grid\`).
+Wallpaper: the app sets \`:root\` vars \`--page-bg-image\`, \`--page-bg-scrim-alpha\` (**0–1**), \`--page-bg-blur\` and draws \`body::before\` / \`body::after\`. Theme CSS may override those variables only — **never** swap in fake image URLs. \`.page.page--has-bg\` is still added when a wallpaper URL exists (hook for selectors). Also: \`.avatar\`; \`.social-stats\` / \`.stat-pill\`; \`.stat-like-action\`; horizontal rows: \`.song-scroll-row\` / \`.song-scroll-btn\` or \`.song-scroll.song-scroll--native\` inside \`.song-grid\`.
 
-Also style app chrome (mounted outside iframe, same CSS):
+**Studio editor:** Users paste this CSS into Niche4Niche Studio; it is shown in the **preview iframe** and on the **published profile** only. **Do not** write selectors for \`.n4n-studio-*\`, \`.n4n-friends-*\`, or any other Studio sidebar/header UI — those elements are not styled by this file.
+
+**Published profile (optional):** You may style the outer wrapper for full-page background:
 
 \`\`\`text
-${APP_CHROME_REFERENCE}
+${PUBLIC_PAGE_WRAPPER_HINT}
 \`\`\`
 
 ## Constraints
@@ -95,7 +95,7 @@ ${brief}
 
 ---
 
-Profile: **${profile.displayName || 'Your Name'}** @${profile.username || 'handle'}${profile.avatar ? ` (has avatar)` : ''}`
+Profile: **${profile.displayName || 'Your Name'}** @${profile.username || 'handle'}${profile.avatar ? ` (has avatar)` : ''}${profile.backgroundImage?.trim() ? ` — **Background image set in Data** (scrim α≈${(profile.style.backgroundOverlayOpacity ?? 0.35).toFixed(2)}, blur≈${profile.style.backgroundBlurPx ?? 0}px); keep their \`--page-bg-*\` variables valid.` : ''}`
 }
 
 export function buildStudioAiFullPagePrompt(
@@ -120,11 +120,12 @@ export function buildStudioAiFullPagePrompt(
 4. Do **not** replace stream links or cover image URLs. Copy them character-for-character.
 5. Include: hero with avatar (\`<img class="avatar">\`), name, @handle, bio, \`.social-stats\` with \`.stat-pill\` items and \`.stat-like-action\` for like button; sections with titles; song cards with cover, title, artist, platform cue, clickable link.
 6. Valid HTML, readable class names, at least one \`@media\` breakpoint, https-only assets.
+${profile.backgroundImage?.trim() ? `7. User set a **wallpaper in Data**: the host injects \`:root\` / \`body\` layers automatically. Use \`<div class="page page--has-bg">\` (or rely on the host wrap) and the **exact** wallpaper URL and overlay/blur numbers from the library block — do not invent URLs.` : ''}
 
-## Also style app chrome
+**Do not** target Studio UI (\`.n4n-studio-*\`, \`.n4n-friends-*\`). Optional published-page wrapper:
 
 \`\`\`text
-${APP_CHROME_REFERENCE}
+${PUBLIC_PAGE_WRAPPER_HINT}
 \`\`\`
 
 ## Creative freedom

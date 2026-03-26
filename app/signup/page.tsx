@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 
 const RESERVED = new Set([
   'studio', 'login', 'signup', 'preview', 'settings', 'api', 'admin',
-  'about', 'help', 'terms', 'privacy', 'u', 'app', 'auth', 'profile',
+  'about', 'help', 'terms', 'privacy', 'themes', 'u', 'app', 'auth', 'profile',
 ])
 
 export default function SignupPage() {

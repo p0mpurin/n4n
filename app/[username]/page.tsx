@@ -1,14 +1,23 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { generateProfileHtml, generateProfileCss } from '@/lib/profile-template'
+import {
+  generateProfileHtml,
+  generateProfileCss,
+  finalizeProfileHtmlBody,
+  composeProfileStylesheet,
+} from '@/lib/profile-template'
 import { incrementView } from '@/lib/views'
 import { PublicLikeEnhancer } from '@/components/public-like-enhancer'
-import type { UserProfile, SongSection, ProfileStyle } from '@/lib/mock-data'
-import { defaultStyle } from '@/lib/mock-data'
+import { PublicFriendAction } from '@/components/public-friend-action'
+import { SongScrollNavMount } from '@/components/song-scroll-nav-mount'
+import type { UserProfile, SongSection } from '@/lib/mock-data'
+import { backgroundImageFromRow, mergeProfileStyle } from '@/lib/profile-row-helpers'
+
+export const dynamic = 'force-dynamic'
 
 const RESERVED = new Set([
   'studio', 'login', 'signup', 'preview', 'settings', 'api', 'admin',
-  'about', 'help', 'terms', 'privacy',
+  'about', 'help', 'terms', 'privacy', 'themes',
 ])
 
 interface PageProps {
@@ -51,21 +60,23 @@ export default async function PublicProfilePage({ params }: PageProps) {
       .eq('status', 'accepted'),
   ])
 
-  // Build srcDoc the same way the studio does
+  const mergedStyle = mergeProfileStyle(row.style)
+  const bgUrl = backgroundImageFromRow(row as Record<string, unknown>)
+
+  // Build srcDoc the same way the studio does (keep style.backgroundImage in sync for resolveBackgroundVars)
   const fakeProfile: UserProfile = {
     id: row.id,
     username: row.username,
     displayName: row.display_name || '',
     avatar: row.avatar_url || '',
+    backgroundImage: bgUrl,
     bio: row.bio || '',
     joinedAt: row.created_at,
     useCustomPage: row.use_custom_page,
     customPageHTML: row.custom_page_html || '',
     customPageCSS: row.custom_page_css || '',
     sections: Array.isArray(row.sections) ? (row.sections as SongSection[]) : [],
-    style: row.style && typeof row.style === 'object'
-      ? { ...defaultStyle, ...(row.style as Partial<ProfileStyle>) }
-      : defaultStyle,
+    style: { ...mergedStyle, backgroundImage: bgUrl || mergedStyle.backgroundImage || '' },
     achievements: [],
     friends: [],
     stats: {
@@ -77,18 +88,23 @@ export default async function PublicProfilePage({ params }: PageProps) {
     },
   }
 
-  const htmlBody =
+  const rawHtml =
     fakeProfile.useCustomPage && fakeProfile.customPageHTML.trim()
       ? fakeProfile.customPageHTML
       : generateProfileHtml(fakeProfile)
-  const cssText =
-    fakeProfile.customPageCSS.trim() ? fakeProfile.customPageCSS : generateProfileCss()
+  const htmlBody = finalizeProfileHtmlBody(fakeProfile, rawHtml)
+  const cssText = composeProfileStylesheet(
+    fakeProfile.customPageCSS.trim() ? fakeProfile.customPageCSS : generateProfileCss(),
+    fakeProfile,
+  )
 
   return (
-    <div className="n4n-public-shell min-h-screen bg-black">
+    <div className="n4n-public-shell relative min-h-screen">
       <style>{cssText}</style>
-      <div dangerouslySetInnerHTML={{ __html: htmlBody }} />
+      <div className="n4n-profile-root block w-full max-w-full min-w-0" dangerouslySetInnerHTML={{ __html: htmlBody }} />
+      <SongScrollNavMount />
       <PublicLikeEnhancer profileId={row.id} initialLikes={likeCount ?? 0} />
+      <PublicFriendAction profileId={row.id} profileUsername={row.username} />
     </div>
   )
 }

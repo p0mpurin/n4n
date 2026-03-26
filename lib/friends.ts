@@ -11,6 +11,37 @@ export interface FriendRow {
   sections: unknown[]
 }
 
+export type FriendshipWithProfileStatus =
+  | { status: 'none' }
+  | { status: 'pending_sent'; friendship_id: string }
+  | { status: 'pending_received'; friendship_id: string }
+  | { status: 'accepted'; friendship_id: string }
+
+/** Relationship between the signed-in user and another profile (by profile id). */
+export async function getFriendshipWithProfile(
+  myId: string,
+  profileId: string,
+): Promise<FriendshipWithProfileStatus> {
+  if (myId === profileId) return { status: 'none' }
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('friendships')
+    .select('id, requester_id, addressee_id, status')
+    .or(
+      `and(requester_id.eq.${myId},addressee_id.eq.${profileId}),and(requester_id.eq.${profileId},addressee_id.eq.${myId})`,
+    )
+    .maybeSingle()
+
+  if (!data) return { status: 'none' }
+  const st = data.status as FriendRow['status']
+  if (st === 'accepted') return { status: 'accepted', friendship_id: data.id }
+  if (st === 'pending') {
+    if (data.requester_id === myId) return { status: 'pending_sent', friendship_id: data.id }
+    return { status: 'pending_received', friendship_id: data.id }
+  }
+  return { status: 'none' }
+}
+
 export async function sendFriendRequest(username: string, myId: string): Promise<{ error?: string }> {
   const supabase = createClient()
 

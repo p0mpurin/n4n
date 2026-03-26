@@ -18,7 +18,14 @@ import {
   type Song,
   type Friend,
 } from './mock-data'
-import { generateProfileCss, generateProfileHtml } from './profile-template'
+import {
+  buildProfileSrcDocument,
+  finalizeProfileHtmlBody,
+  generateProfileCss,
+  generateProfileHtml,
+  composeProfileStylesheet,
+} from './profile-template'
+import { backgroundImageFromRow, mergeProfileStyle } from './profile-row-helpers'
 import { useAuth } from './auth-context'
 import { createClient } from './supabase/client'
 
@@ -29,7 +36,7 @@ interface ProfileContextType {
   setEditMode: (mode: boolean) => void
   updateStyle: (updates: Partial<ProfileStyle>) => void
   resetStyle: () => void
-  updateIdentity: (updates: Partial<Pick<UserProfile, 'username' | 'displayName' | 'bio' | 'avatar'>>) => void
+  updateIdentity: (updates: Partial<Pick<UserProfile, 'username' | 'displayName' | 'bio' | 'avatar' | 'backgroundImage'>>) => void
   addSong: (song: Song, sectionId: string) => void
   removeSong: (songId: string, sectionId: string) => void
   reorderSongs: (sectionId: string, fromIndex: number, toIndex: number) => void
@@ -44,6 +51,8 @@ interface ProfileContextType {
   setUseCustomPage: (value: boolean, snapshotHtml?: string) => void
   regenerateFromData: () => void
   buildSrcDoc: () => string
+  /** Write profile to Supabase/localStorage now (no debounce). Pass snapshot if state has not committed yet. */
+  persistToBackend: (snapshot?: UserProfile) => Promise<void>
   ready: boolean
 }
 
@@ -54,19 +63,20 @@ const SAVE_DEBOUNCE_MS = 1500
 function profileFromRow(row: Record<string, unknown>): Partial<UserProfile> {
   const sections = Array.isArray(row.sections) ? (row.sections as SongSection[]) : []
   const totalSongs = sections.reduce((n, s) => n + (Array.isArray(s.songs) ? s.songs.length : 0), 0)
+  const mergedStyle = mergeProfileStyle(row.style)
+  const bg = backgroundImageFromRow(row)
   return {
     id: row.id as string,
     username: row.username as string,
     displayName: (row.display_name as string) || '',
     avatar: (row.avatar_url as string) || '',
+    backgroundImage: bg,
     bio: (row.bio as string) || '',
     useCustomPage: row.use_custom_page as boolean,
     customPageHTML: (row.custom_page_html as string) || '',
     customPageCSS: (row.custom_page_css as string) || '',
     sections,
-    style: row.style && typeof row.style === 'object'
-      ? { ...defaultStyle, ...(row.style as Partial<ProfileStyle>) }
-      : defaultStyle,
+    style: { ...mergedStyle, backgroundImage: bg },
     stats: {
       totalSongs,
       totalFriends: 0,
@@ -86,7 +96,10 @@ function profileToRow(p: UserProfile) {
     custom_page_html: p.customPageHTML,
     custom_page_css: p.customPageCSS,
     sections: p.sections,
-    style: p.style,
+    style: {
+      ...p.style,
+      backgroundImage: p.backgroundImage || '',
+    },
   }
 }
 
@@ -96,6 +109,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false)
   const [isEditMode, setEditMode] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const profileRef = useRef(profile)
+  profileRef.current = profile
   const isAuthed = !!user
 
   const style = profile.style
@@ -104,10 +119,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     async (nextProfile: UserProfile) => {
       if (isAuthed && user) {
         const supabase = createClient()
-        await supabase
-          .from('profiles')
-          .update(profileToRow(nextProfile))
-          .eq('id', user.id)
+        const { error } = await supabase.from('profiles').update(profileToRow(nextProfile)).eq('id', user.id)
+        if (error) console.error('[Niche4Niche] Profile save failed:', error.message, error)
       } else {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile))
@@ -115,6 +128,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       }
     },
     [isAuthed, user],
+  )
+
+  const persistToBackend = useCallback(
+    async (snapshot?: UserProfile) => {
+      await persistNow(snapshot ?? profileRef.current)
+    },
+    [persistNow],
   )
 
   // --- Hydrate from Supabase (authed) or localStorage (guest) ---
@@ -179,6 +199,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
                 customPageHTML: typeof parsed.customPageHTML === 'string' ? parsed.customPageHTML : prev.customPageHTML,
                 customPageCSS: typeof parsed.customPageCSS === 'string' ? parsed.customPageCSS : prev.customPageCSS,
                 useCustomPage: typeof parsed.useCustomPage === 'boolean' ? parsed.useCustomPage : prev.useCustomPage,
+                backgroundImage:
+                  typeof parsed.backgroundImage === 'string' && parsed.backgroundImage
+                    ? parsed.backgroundImage
+                    : typeof parsed.style?.backgroundImage === 'string'
+                      ? parsed.style.backgroundImage
+                      : prev.backgroundImage,
               }))
             }
           }
@@ -200,14 +226,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     saveTimer.current = setTimeout(() => {
       if (isAuthed && user) {
         const supabase = createClient()
+        const row = profileToRow(profileRef.current)
         supabase
           .from('profiles')
-          .update(profileToRow(profile))
+          .update(row)
           .eq('id', user.id)
-          .then(() => { /* fire and forget */ })
+          .then(({ error }) => {
+            if (error) console.error('[Niche4Niche] Profile save failed:', error.message, error)
+          })
       } else {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(profileRef.current))
         } catch { /* ignore */ }
       }
     }, SAVE_DEBOUNCE_MS)
@@ -216,6 +245,28 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
   }, [profile, ready, isAuthed, user])
+
+  // Flush when the page is torn down (debounce may not have fired yet).
+  useEffect(() => {
+    const flush = () => {
+      if (!ready) return
+      if (isAuthed && user) {
+        const supabase = createClient()
+        const row = profileToRow(profileRef.current)
+        void supabase.from('profiles').update(row).eq('id', user.id).then(({ error }) => {
+          if (error) console.error('[Niche4Niche] Profile save failed:', error.message, error)
+        })
+      } else {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(profileRef.current))
+        } catch { /* ignore */ }
+      }
+    }
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [ready, isAuthed, user])
 
   // --- All the same mutation callbacks as before ---
 
@@ -227,8 +278,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setProfile((prev) => ({ ...prev, style: defaultStyle }))
   }, [])
 
-  const updateIdentity = useCallback((updates: Partial<Pick<UserProfile, 'username' | 'displayName' | 'bio' | 'avatar'>>) => {
-    setProfile((prev) => ({ ...prev, ...updates }))
+  const updateIdentity = useCallback((updates: Partial<Pick<UserProfile, 'username' | 'displayName' | 'bio' | 'avatar' | 'backgroundImage'>>) => {
+    setProfile((prev) => {
+      const next = { ...prev, ...updates }
+      if (typeof updates.backgroundImage === 'string') {
+        next.style = { ...next.style, backgroundImage: updates.backgroundImage }
+      }
+      return next
+    })
   }, [])
 
   const addSong = useCallback((song: Song, sectionId: string) => {
@@ -351,13 +408,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [persistNow])
 
   const buildSrcDoc = useCallback((): string => {
-    const htmlBody =
+    const raw =
       profile.useCustomPage && profile.customPageHTML.trim()
         ? profile.customPageHTML
         : generateProfileHtml(profile)
-    const cssText =
-      profile.customPageCSS.trim() ? profile.customPageCSS : generateProfileCss()
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>${cssText}</style></head><body>${htmlBody}</body></html>`
+    const htmlBody = finalizeProfileHtmlBody(profile, raw)
+    const cssBase = profile.customPageCSS.trim() ? profile.customPageCSS : generateProfileCss()
+    const cssText = composeProfileStylesheet(cssBase, profile)
+    return buildProfileSrcDocument(htmlBody, cssText)
   }, [profile])
 
   return (
@@ -384,6 +442,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setUseCustomPage,
         regenerateFromData,
         buildSrcDoc,
+        persistToBackend,
         ready,
       }}
     >

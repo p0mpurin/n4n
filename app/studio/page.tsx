@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   Music, Code2, User, FolderPlus, Plus, Trash2,
   ChevronDown, ExternalLink, RefreshCcw, Eye, Users,
-  Grid3X3, GalleryHorizontalEnd, ImageIcon
+  Grid3X3, GalleryHorizontalEnd, ImageIcon, Palette, Loader2,
 } from 'lucide-react'
 import { useProfile } from '@/lib/profile-context'
 import { useAuth } from '@/lib/auth-context'
@@ -15,9 +15,21 @@ import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Slider } from '@/components/ui/slider'
 import { AddSongModal } from '@/components/add-song-modal'
 import { AiPromptPanel } from '@/components/ai-prompt-panel'
 import { FriendsPanel } from '@/components/friends-panel'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { publishCssTheme } from '@/lib/css-themes'
+import { cn } from '@/lib/utils'
 
 type Tab = 'data' | 'code' | 'friends'
 
@@ -25,7 +37,8 @@ export default function StudioPage() {
   const { user, signOut } = useAuth()
   const {
     profile, ready, addSection, removeSection, updateSection, removeSong,
-    updateIdentity, setCustomPageCode, regenerateFromData, buildSrcDoc
+    updateIdentity, setCustomPageCode, regenerateFromData, buildSrcDoc,
+    persistToBackend,
   } = useProfile()
   const [tab, setTab] = useState<Tab>('data')
   const [html, setHtml] = useState('')
@@ -39,14 +52,39 @@ export default function StudioPage() {
   useEffect(() => {
     if (!ready || profile.useCustomPage) return
     setHtml(generateProfileHtml(profile))
-  }, [ready, profile.useCustomPage, profile.sections, profile.displayName, profile.username, profile.bio, profile.avatar, profile.stats])
+  }, [
+    ready,
+    profile.useCustomPage,
+    profile.sections,
+    profile.displayName,
+    profile.username,
+    profile.bio,
+    profile.avatar,
+    profile.backgroundImage,
+    profile.style.backgroundOverlayOpacity,
+    profile.style.backgroundBlurPx,
+    profile.stats,
+  ])
 
   useEffect(() => {
     if (!ready || !profile.useCustomPage) return
     setHtml(profile.customPageHTML || generateProfileHtml(profile))
   }, [ready, profile.useCustomPage, profile.customPageHTML])
 
-  const saveCode = () => setCustomPageCode(html, css)
+  useEffect(() => {
+    return () => {
+      if (ready) void persistToBackend()
+    }
+  }, [ready, persistToBackend])
+
+  const saveCode = () => {
+    setCustomPageCode(html, css)
+    void persistToBackend({
+      ...profile,
+      customPageCSS: css,
+      ...(profile.useCustomPage ? { customPageHTML: html } : {}),
+    })
+  }
 
   const srcDoc = buildSrcDoc()
 
@@ -60,8 +98,6 @@ export default function StudioPage() {
 
   return (
     <div className="n4n-studio-shell flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      {!!profile.customPageCSS.trim() && <style>{profile.customPageCSS}</style>}
-
       {/* ---- Header ---- */}
       <header className="n4n-studio-header flex items-center justify-between gap-4 border-b border-border px-4 py-2">
         <div className="flex items-center gap-3">
@@ -84,6 +120,12 @@ export default function StudioPage() {
             <Link href="/studio/preview" target="_blank">
               <Eye className="mr-1 h-3 w-3" />
               Preview
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs" asChild>
+            <Link href="/themes" target="_blank" rel="noreferrer">
+              <Palette className="mr-1 h-3 w-3" />
+              Themes
             </Link>
           </Button>
           {user && (
@@ -151,7 +193,9 @@ export default function StudioPage() {
    DATA PANEL
    ============================================================ */
 function DataPanel() {
-  const { profile, addSection, updateIdentity } = useProfile()
+  const { profile, addSection, updateIdentity, updateStyle } = useProfile()
+  const overlayPct = Math.round((profile.style.backgroundOverlayOpacity ?? 0.35) * 100)
+  const blurPx = profile.style.backgroundBlurPx ?? 0
 
   return (
     <div className="space-y-6">
@@ -210,6 +254,86 @@ function DataPanel() {
             placeholder="Tell people about your taste..."
           />
         </div>
+
+        <div className="flex items-start gap-3">
+          <div className="shrink-0">
+            {profile.backgroundImage?.trim() ? (
+              <div
+                className="relative h-14 w-24 overflow-hidden rounded-md border border-border"
+                title="Background preview"
+              >
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{
+                    backgroundImage: `url(${JSON.stringify(profile.backgroundImage.trim())})`,
+                    filter: `blur(${Math.min(blurPx, 24) * 0.2}px)`,
+                    transform: 'scale(1.08)',
+                  }}
+                />
+                <div
+                  className="pointer-events-none absolute inset-0 bg-[rgb(10,10,16)]"
+                  style={{ opacity: overlayPct / 100 }}
+                />
+              </div>
+            ) : (
+              <div className="flex h-14 w-24 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
+                <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <Label className="text-[11px]">Background image URL</Label>
+            <Input
+              value={profile.backgroundImage}
+              onChange={(e) => updateIdentity({ backgroundImage: e.target.value })}
+              placeholder="https://example.com/wallpaper.jpg"
+              className="h-8 text-xs"
+            />
+            <p className="text-[10px] text-muted-foreground/60">
+              Full-page cover behind your profile. The app paints it on <code className="font-mono text-[9px]">body</code>{' '}
+              via <code className="font-mono text-[9px]">:root</code> variables{' '}
+              <code className="font-mono text-[9px]">--page-bg-image</code>,{' '}
+              <code className="font-mono text-[9px]">--page-bg-scrim-alpha</code>,{' '}
+              <code className="font-mono text-[9px]">--page-bg-blur</code>.
+            </p>
+          </div>
+        </div>
+
+        {!!profile.backgroundImage?.trim() && (
+          <div className="space-y-4 rounded-lg border border-border/60 bg-card/20 px-3 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              Background look
+            </p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-[11px]">Overlay darkness</Label>
+                <span className="text-[10px] tabular-nums text-muted-foreground">{overlayPct}%</span>
+              </div>
+              <Slider
+                min={0}
+                max={100}
+                step={1}
+                value={[overlayPct]}
+                onValueChange={(v) => updateStyle({ backgroundOverlayOpacity: (v[0] ?? 0) / 100 })}
+              />
+              <p className="text-[9px] text-muted-foreground/70">How much the dark scrim covers the photo (0 = photo only).</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-[11px]">Blur</Label>
+                <span className="text-[10px] tabular-nums text-muted-foreground">{blurPx}px</span>
+              </div>
+              <Slider
+                min={0}
+                max={24}
+                step={1}
+                value={[blurPx]}
+                onValueChange={(v) => updateStyle({ backgroundBlurPx: v[0] ?? 0 })}
+              />
+              <p className="text-[9px] text-muted-foreground/70">Softens the wallpaper (max 24px in Studio; theme CSS can use up to 48px).</p>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Sections */}
@@ -280,9 +404,13 @@ function SectionBlock({ section }: { section: import('@/lib/mock-data').SongSect
               <Grid3X3 className="h-3.5 w-3.5" />
             </button>
             <button
-              onClick={() => updateSection(section.id, { layout: 'scroll' })}
+              onClick={() =>
+                updateSection(section.id, {
+                  layout: 'scroll',
+                  scrollNav: section.scrollNav === 'native' ? 'native' : 'arrows',
+                })}
               className={`rounded-md p-1.5 transition-colors ${section.layout === 'scroll' ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              title="Horizontal scroll"
+              title="Horizontal row (arrows or scrollbar — see below)"
             >
               <GalleryHorizontalEnd className="h-3.5 w-3.5" />
             </button>
@@ -295,6 +423,33 @@ function SectionBlock({ section }: { section: import('@/lib/mock-data').SongSect
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
+
+          {section.layout === 'scroll' && (
+            <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/60 bg-background/30 px-2 py-1.5">
+              <span className="text-[10px] font-medium text-muted-foreground">Row navigation</span>
+              <button
+                type="button"
+                onClick={() => updateSection(section.id, { scrollNav: 'arrows' })}
+                className={cn(
+                  'rounded px-2 py-0.5 text-[10px] transition-colors',
+                  section.scrollNav !== 'native' ? 'bg-foreground/15 text-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Arrows
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSection(section.id, { scrollNav: 'native' })}
+                className={cn(
+                  'rounded px-2 py-0.5 text-[10px] transition-colors',
+                  section.scrollNav === 'native' ? 'bg-foreground/15 text-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Scrollbar
+              </button>
+              <span className="text-[9px] text-muted-foreground/70">Theme with CSS vars on .song-scroll-row</span>
+            </div>
+          )}
 
           {/* Songs */}
           {section.songs.length === 0 && (
@@ -348,10 +503,122 @@ function CodePanel({
   onSave: () => void; onRegenerate: () => void
 }) {
   const { profile, setUseCustomPage, setCustomPageCode } = useProfile()
+  const { user } = useAuth()
+  const [pubOpen, setPubOpen] = useState(false)
+  const [pubTitle, setPubTitle] = useState('')
+  const [pubDesc, setPubDesc] = useState('')
+  const [pubErr, setPubErr] = useState('')
+  const [pubBusy, setPubBusy] = useState(false)
+  const [justPublished, setJustPublished] = useState(false)
+
+  const submitPublish = async () => {
+    setPubErr('')
+    if (!user) return
+    setPubBusy(true)
+    const r = await publishCssTheme({
+      authorId: user.id,
+      title: pubTitle,
+      description: pubDesc,
+      css,
+    })
+    setPubBusy(false)
+    if (r.error) {
+      setPubErr(r.error)
+      return
+    }
+    setPubOpen(false)
+    setPubTitle('')
+    setPubDesc('')
+    setJustPublished(true)
+    window.setTimeout(() => setJustPublished(false), 8000)
+  }
 
   return (
     <div className="space-y-4">
       <AiPromptPanel />
+
+      {justPublished && (
+        <p className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
+          Theme published.{' '}
+          <Link href="/themes" target="_blank" className="font-medium underline underline-offset-2">
+            Open gallery
+          </Link>
+        </p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+          <Link href="/themes" target="_blank" rel="noreferrer">
+            <Palette className="mr-1 h-3 w-3" />
+            Browse community themes
+          </Link>
+        </Button>
+        <Dialog
+          open={pubOpen}
+          onOpenChange={(o) => {
+            setPubOpen(o)
+            if (o) setPubErr('')
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={!user?.id}
+              title={!user?.id ? 'Sign in to publish' : undefined}
+            >
+              Publish CSS to gallery
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Publish CSS theme</DialogTitle>
+              <DialogDescription>
+                Others can apply this stylesheet to their profile from the themes gallery. Only the CSS
+                below (current editor contents) is shared.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div>
+                <Label htmlFor="n4n-pub-title" className="text-xs">
+                  Title
+                </Label>
+                <Input
+                  id="n4n-pub-title"
+                  value={pubTitle}
+                  onChange={(e) => setPubTitle(e.target.value)}
+                  placeholder="e.g. Midnight glass"
+                  className="mt-1 h-9 text-sm"
+                  maxLength={120}
+                />
+              </div>
+              <div>
+                <Label htmlFor="n4n-pub-desc" className="text-xs">
+                  Description (optional)
+                </Label>
+                <Textarea
+                  id="n4n-pub-desc"
+                  value={pubDesc}
+                  onChange={(e) => setPubDesc(e.target.value)}
+                  placeholder="What vibe or layout does this theme suit?"
+                  className="mt-1 min-h-[72px] text-sm"
+                  rows={3}
+                />
+              </div>
+              {pubErr ? <p className="text-xs text-destructive">{pubErr}</p> : null}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setPubOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" disabled={pubBusy || !pubTitle.trim() || !css.trim()} onClick={() => void submitPublish()}>
+                {pubBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Publish'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card/20 p-3">
         <div className="flex items-center justify-between gap-3">

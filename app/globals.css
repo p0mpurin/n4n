@@ -127,7 +127,8 @@
 }
 
 @layer base {
-  * {
+  /* Skip user-generated profile markup (see .n4n-profile-root on /[username]) — iframe preview has no Tailwind. */
+  *:where(:not(.n4n-profile-root, .n4n-profile-root *)) {
     @apply border-border outline-ring/50;
   }
   body {
@@ -215,6 +216,261 @@
 /* Transitions */
 .transition-theme {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ---- Landing page (/) — organic motion; scoped to .n4n-landing ---- */
+@keyframes n4n-landing-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate3d(1.5%, -2%, 0) rotate(0.6deg);
+  }
+  66% {
+    transform: translate3d(-1.2%, 1.5%, 0) rotate(-0.5deg);
+  }
+}
+
+@keyframes n4n-landing-float-reverse {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-2%, 1.5%, 0) rotate(-0.8deg);
+  }
+}
+
+@keyframes n4n-landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes n4n-landing-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(4%, -3%, 0);
+  }
+}
+
+@keyframes n4n-landing-blob-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes n4n-landing-shine {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes n4n-landing-cta-aura {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 0 48px -20px rgba(143, 185, 150, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(143, 185, 150, 0.12),
+      0 0 64px -16px rgba(167, 139, 250, 0.2);
+  }
+}
+
+@keyframes n4n-landing-deco-shimmer {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.n4n-landing .n4n-landing-grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% -5%, #000 15%, transparent 62%);
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .n4n-landing .n4n-landing-blob-drift {
+    animation: n4n-landing-drift 24s ease-in-out infinite;
+  }
+
+  .n4n-landing .n4n-landing-blob-drift--slow {
+    animation: n4n-landing-drift 32s ease-in-out infinite reverse;
+  }
+
+  .n4n-landing .n4n-landing-blob-drift--lag {
+    animation: n4n-landing-drift 30s ease-in-out infinite;
+    animation-delay: -8s;
+  }
+
+  .n4n-landing .n4n-landing-deco-float {
+    animation: n4n-landing-float 20s ease-in-out infinite;
+  }
+
+  .n4n-landing .n4n-landing-deco-float--alt {
+    animation: n4n-landing-float-reverse 26s ease-in-out infinite;
+  }
+
+  .n4n-landing .n4n-landing-fade-up {
+    animation: n4n-landing-fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .n4n-landing .n4n-landing-bento > .n4n-landing-fade-up:nth-child(1) {
+    animation-delay: 0.56s;
+  }
+  .n4n-landing .n4n-landing-bento > .n4n-landing-fade-up:nth-child(2) {
+    animation-delay: 0.62s;
+  }
+  .n4n-landing .n4n-landing-bento > .n4n-landing-fade-up:nth-child(3) {
+    animation-delay: 0.68s;
+  }
+  .n4n-landing .n4n-landing-bento > .n4n-landing-fade-up:nth-child(4) {
+    animation-delay: 0.74s;
+  }
+  .n4n-landing .n4n-landing-bento > .n4n-landing-fade-up:nth-child(5) {
+    animation-delay: 0.8s;
+  }
+  .n4n-landing .n4n-landing-bento > .n4n-landing-fade-up:nth-child(6) {
+    animation-delay: 0.86s;
+  }
+
+  .n4n-landing .n4n-landing-hero-seq > .n4n-landing-fade-up:nth-child(1) {
+    animation-delay: 0.04s;
+  }
+  .n4n-landing .n4n-landing-hero-seq > .n4n-landing-fade-up:nth-child(2) {
+    animation-delay: 0.12s;
+  }
+  .n4n-landing .n4n-landing-hero-seq > .n4n-landing-fade-up:nth-child(3) {
+    animation-delay: 0.2s;
+  }
+  .n4n-landing .n4n-landing-hero-seq > .n4n-landing-fade-up:nth-child(4) {
+    animation-delay: 0.28s;
+  }
+
+  .n4n-landing .n4n-landing-nav-fade {
+    animation: n4n-landing-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .n4n-landing .n4n-landing-blob-inner {
+    animation: n4n-landing-blob-breathe 14s ease-in-out infinite;
+  }
+
+  .n4n-landing .n4n-landing-blob-inner--b {
+    animation-duration: 18s;
+    animation-delay: -3s;
+  }
+
+  .n4n-landing .n4n-landing-blob-inner--c {
+    animation-duration: 20s;
+    animation-delay: -6s;
+  }
+
+  .n4n-landing .n4n-landing-headline-shine {
+    background-size: 200% auto;
+    animation: n4n-landing-shine 10s ease-in-out infinite;
+  }
+
+  .n4n-landing .n4n-landing-cta-aura {
+    animation: n4n-landing-cta-aura 5s ease-in-out infinite;
+  }
+
+  .n4n-landing .n4n-landing-deco-panel {
+    animation: n4n-landing-deco-shimmer 7s ease-in-out infinite;
+  }
+
+  .n4n-landing .n4n-landing-deco-panel--b {
+    animation-delay: -2s;
+  }
+
+  .n4n-landing .n4n-landing-deco-panel--c {
+    animation-delay: -4s;
+  }
+
+  .n4n-landing .n4n-landing-features-intro > .n4n-landing-fade-up:nth-child(1) {
+    animation-delay: 0.42s;
+  }
+
+  .n4n-landing .n4n-landing-features-intro > .n4n-landing-fade-up:nth-child(2) {
+    animation-delay: 0.5s;
+  }
+
+  .n4n-landing .n4n-landing-cta-wrap.n4n-landing-fade-up {
+    animation-delay: 0.98s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .n4n-landing .n4n-landing-fade-up {
+    opacity: 1;
+    animation: none;
+  }
+
+  .n4n-landing .n4n-landing-nav-fade {
+    opacity: 1;
+    animation: none;
+  }
+
+  .n4n-landing .n4n-landing-blob-drift,
+  .n4n-landing .n4n-landing-blob-drift--slow,
+  .n4n-landing .n4n-landing-blob-drift--lag,
+  .n4n-landing .n4n-landing-deco-float,
+  .n4n-landing .n4n-landing-deco-float--alt {
+    animation: none;
+  }
+
+  .n4n-landing .n4n-landing-blob-inner,
+  .n4n-landing .n4n-landing-blob-inner--b,
+  .n4n-landing .n4n-landing-blob-inner--c {
+    animation: none;
+    opacity: 0.55;
+  }
+
+  .n4n-landing .n4n-landing-headline-shine {
+    animation: none;
+  }
+
+  .n4n-landing .n4n-landing-cta-aura {
+    animation: none;
+  }
+
+  .n4n-landing .n4n-landing-deco-panel,
+  .n4n-landing .n4n-landing-deco-panel--b,
+  .n4n-landing .n4n-landing-deco-panel--c {
+    animation: none;
+  }
 }
 
 /* Platform badges */

@@ -11,6 +11,8 @@ export interface Song {
   mood?: string
 }
 
+export type SongRowScrollNav = 'arrows' | 'native'
+
 export interface SongSection {
   id: string
   name: string
@@ -18,6 +20,8 @@ export interface SongSection {
   mood?: string
   color?: string
   layout?: 'grid' | 'scroll'
+  /** When layout is `scroll`: `arrows` (default) hides the scrollbar and uses buttons; `native` keeps the OS scrollbar. */
+  scrollNav?: SongRowScrollNav
 }
 
 export interface ProfileStyle {
@@ -31,6 +35,12 @@ export interface ProfileStyle {
   borderRadius: string
   spacing: string
   customCSS: string
+  /** Persisted with `style` JSON — full-page cover URL (mirrors UserProfile.backgroundImage). */
+  backgroundImage?: string
+  /** 0–1 darkness of the scrim over the wallpaper (Data tab). */
+  backgroundOverlayOpacity?: number
+  /** 0–48 px Gaussian blur on the wallpaper layer. */
+  backgroundBlurPx?: number
 }
 
 export interface Achievement {
@@ -59,6 +69,8 @@ export interface UserProfile {
   username: string
   displayName: string
   avatar: string
+  /** Full-page background (cover), same idea as avatar URL */
+  backgroundImage: string
   bio: string
   joinedAt: string
   useCustomPage: boolean
@@ -88,7 +100,9 @@ export const defaultStyle: ProfileStyle = {
   fontSize: '16px',
   borderRadius: '12px',
   spacing: '16px',
-  customCSS: ''
+  customCSS: '',
+  backgroundOverlayOpacity: 0.35,
+  backgroundBlurPx: 0,
 }
 
 export function createEmptyUserProfile(): UserProfile {
@@ -97,6 +111,7 @@ export function createEmptyUserProfile(): UserProfile {
     username: 'new-user',
     displayName: 'New Profile',
     avatar: '',
+    backgroundImage: '',
     bio: '',
     joinedAt: new Date().toISOString(),
     useCustomPage: false,
@@ -461,6 +476,7 @@ export const mockUserProfile: UserProfile = {
   username: 'soundscape',
   displayName: 'Soundscape',
   avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=soundscape',
+  backgroundImage: '',
   bio: 'Music curator & late night listener. Always looking for the next sound that moves me.',
   joinedAt: '2023-06-15',
   useCustomPage: false,

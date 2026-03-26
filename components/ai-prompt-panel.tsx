@@ -71,7 +71,7 @@ export function AiPromptPanel({ className }: { className?: string }) {
             <span className="ml-auto text-[10px] text-muted-foreground">Recommended</span>
           </div>
           <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
-            Styles your page, avatar, stats, song cards, and Studio chrome. New sections automatically inherit the theme.
+            Styles the profile preview and your live page (hero, stats, song cards). Studio sidebar and header stay on the default theme.
           </p>
           <Button type="button" size="sm" className="w-full" onClick={() => copy('theme')}>
             {copied === 'theme' ? (

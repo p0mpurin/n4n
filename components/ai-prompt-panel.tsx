@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Copy, Check, Sparkles } from 'lucide-react'
+import { ChevronDown, Copy, Check, Sparkles, Wand2 } from 'lucide-react'
 import { useProfile } from '@/lib/profile-context'
 import { buildStudioAiThemePrompt, buildStudioAiFullPagePrompt } from '@/lib/ai-studio-prompt'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 
 export function AiPromptPanel({ className }: { className?: string }) {
   const { profile } = useProfile()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [creativeBrief, setCreativeBrief] = useState('')
   const [includeLibrary, setIncludeLibrary] = useState(true)
   const [copied, setCopied] = useState<'theme' | 'full' | null>(null)
@@ -36,65 +36,79 @@ export function AiPromptPanel({ className }: { className?: string }) {
   }
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className={cn('rounded-lg border border-border bg-card/30', className)}>
-      <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-card/50">
-        <Sparkles className="h-4 w-4 shrink-0 text-amber-500/90" />
-        <span className="flex-1 text-sm font-semibold">AI prompt</span>
+    <Collapsible open={open} onOpenChange={setOpen} className={cn('rounded-xl border border-border bg-card/40', className)}>
+      <CollapsibleTrigger className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left transition-colors hover:bg-card/60">
+        <Wand2 className="h-4 w-4 shrink-0 text-violet-400" />
+        <span className="flex-1 text-sm font-semibold">AI theme generator</span>
+        <span className="rounded-md bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-400">
+          Best with Claude
+        </span>
         <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </CollapsibleTrigger>
-      <CollapsibleContent className="border-t border-border px-3 pb-3 pt-1 space-y-3">
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Theme (CSS only)</strong> is what you want most of the time: the app fills real HTML from your library, and your pasted CSS styles it. New sections and songs inherit the theme. This prompt also includes selectors for Studio/public likes-views-friends chrome. The model must not swap cover URLs or stream links—it only writes CSS.
-        </p>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Use <strong className="text-foreground">Full page</strong> only if you turn on <strong className="text-foreground">Custom HTML</strong> and will paste both HTML and CSS.
-        </p>
-        <div className="space-y-2">
-          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Layout &amp; vibe (free-form)
+      <CollapsibleContent className="border-t border-border px-3.5 pb-4 pt-3 space-y-4">
+        {/* Vibe input */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-muted-foreground">
+            Describe your vibe
           </Label>
           <Textarea
             value={creativeBrief}
             onChange={(e) => setCreativeBrief(e.target.value)}
-            placeholder='e.g. "Y2K chrome, tight grids, neon green accents, huge section titles, lots of negative space"'
-            className="min-h-[72px] resize-y text-xs"
+            placeholder='e.g. "pastel pink + dark, soft glass panels, cozy rounded cards, big avatar"'
+            className="min-h-[64px] resize-y text-xs leading-relaxed"
             spellCheck
           />
+          <p className="text-[10px] text-muted-foreground/70">
+            Layout, colors, typography, density — describe anything. The prompt handles the rest.
+          </p>
         </div>
-        <div className="flex items-center justify-between gap-3 rounded-md border border-border/80 bg-background/40 px-2 py-2">
-          <div className="min-w-0">
-            <p className="text-sm font-medium">Full page: include library URLs</p>
-            <p className="text-xs text-muted-foreground">
-              Encourages exact <code className="text-[10px]">href</code> / <code className="text-[10px]">img src</code> in generated HTML (not used for theme-only).
-            </p>
+
+        {/* Theme prompt (primary) */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <span className="text-xs font-semibold">Theme (CSS only)</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">Recommended</span>
           </div>
-          <Switch checked={includeLibrary} onCheckedChange={setIncludeLibrary} />
-        </div>
-        <div className="flex flex-col gap-2">
+          <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
+            Styles your page, avatar, stats, song cards, and Studio chrome. New sections automatically inherit the theme.
+          </p>
           <Button type="button" size="sm" className="w-full" onClick={() => copy('theme')}>
             {copied === 'theme' ? (
-              <>
-                <Check className="mr-2 h-3.5 w-3.5 text-green-500" />
-                Copied theme prompt
-              </>
+              <><Check className="mr-2 h-3.5 w-3.5 text-green-400" /> Copied</>
             ) : (
-              <>
-                <Copy className="mr-2 h-3.5 w-3.5" />
-                Copy theme prompt (CSS only)
-              </>
+              <><Copy className="mr-2 h-3.5 w-3.5" /> Copy theme prompt</>
             )}
           </Button>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-2">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[10px] text-muted-foreground/60">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        {/* Full page prompt */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold">Full page (HTML + CSS)</span>
+            <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400">
+              Advanced
+            </span>
+          </div>
+          <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
+            Only use with <strong>Custom HTML</strong> enabled. Generates both markup and styles. Data changes won&apos;t auto-update.
+          </p>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/30 px-2.5 py-2">
+            <span className="text-xs">Include library URLs</span>
+            <Switch checked={includeLibrary} onCheckedChange={setIncludeLibrary} />
+          </div>
           <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => copy('full')}>
             {copied === 'full' ? (
-              <>
-                <Check className="mr-2 h-3.5 w-3.5 text-green-500" />
-                Copied full-page prompt
-              </>
+              <><Check className="mr-2 h-3.5 w-3.5 text-green-400" /> Copied</>
             ) : (
-              <>
-                <Copy className="mr-2 h-3.5 w-3.5" />
-                Copy full HTML + CSS prompt
-              </>
+              <><Copy className="mr-2 h-3.5 w-3.5" /> Copy full-page prompt</>
             )}
           </Button>
         </div>

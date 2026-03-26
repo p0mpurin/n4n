@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { generateProfileHtml, generateProfileCss } from '@/lib/profile-template'
 import { incrementView } from '@/lib/views'
-import { PublicProfileBar } from '@/components/public-profile-bar'
+import { PublicLikeEnhancer } from '@/components/public-like-enhancer'
 import type { UserProfile, SongSection, ProfileStyle } from '@/lib/mock-data'
 import { defaultStyle } from '@/lib/mock-data'
 
@@ -84,20 +84,11 @@ export default async function PublicProfilePage({ params }: PageProps) {
   const cssText =
     fakeProfile.customPageCSS.trim() ? fakeProfile.customPageCSS : generateProfileCss()
 
-  const srcDoc = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>${cssText}\nbody{padding-bottom:60px;}</style></head><body>${htmlBody}</body></html>`
-
   return (
-    <div className="n4n-public-shell relative h-screen w-screen bg-black">
-      <iframe
-        title={`${fakeProfile.displayName}'s profile`}
-        className="h-full w-full border-0"
-        srcDoc={srcDoc}
-      />
-      <PublicProfileBar
-        profileId={row.id}
-        profileUsername={row.username}
-        themeCss={cssText}
-      />
+    <div className="n4n-public-shell min-h-screen bg-black">
+      <style>{cssText}</style>
+      <div dangerouslySetInnerHTML={{ __html: htmlBody }} />
+      <PublicLikeEnhancer profileId={row.id} initialLikes={likeCount ?? 0} />
     </div>
   )
 }

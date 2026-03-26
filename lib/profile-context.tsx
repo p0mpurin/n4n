@@ -100,6 +100,23 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const style = profile.style
 
+  const persistNow = useCallback(
+    async (nextProfile: UserProfile) => {
+      if (isAuthed && user) {
+        const supabase = createClient()
+        await supabase
+          .from('profiles')
+          .update(profileToRow(nextProfile))
+          .eq('id', user.id)
+      } else {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile))
+        } catch { /* ignore */ }
+      }
+    },
+    [isAuthed, user],
+  )
+
   // --- Hydrate from Supabase (authed) or localStorage (guest) ---
   useEffect(() => {
     if (authLoading) return
@@ -320,13 +337,18 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const regenerateFromData = useCallback(() => {
-    setProfile((prev) => ({
-      ...prev,
-      useCustomPage: false,
-      customPageHTML: '',
-      customPageCSS: generateProfileCss(),
-    }))
-  }, [])
+    setProfile((prev) => {
+      const next = {
+        ...prev,
+        useCustomPage: false,
+        customPageHTML: '',
+        customPageCSS: generateProfileCss(),
+      }
+      // Regenerate should be immediately reflected on public page too.
+      persistNow(next).catch(() => {})
+      return next
+    })
+  }, [persistNow])
 
   const buildSrcDoc = useCallback((): string => {
     const htmlBody =

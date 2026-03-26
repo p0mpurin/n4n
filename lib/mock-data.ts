@@ -17,6 +17,7 @@ export interface SongSection {
   songs: Song[]
   mood?: string
   color?: string
+  layout?: 'grid' | 'scroll'
 }
 
 export interface ProfileStyle {

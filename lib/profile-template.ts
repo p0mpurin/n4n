@@ -1,16 +1,14 @@
 import type { UserProfile } from './mock-data'
 
-/**
- * Documented shape + class names for `generateProfileHtml`. AI theme prompts and custom CSS should target these selectors so new sections/songs pick up the same look automatically.
- */
 export const DATA_PAGE_MARKUP_REFERENCE = `
 <div class="page">
   <header class="hero">
+    <img class="avatar" src="USER_AVATAR_URL" alt="" /> (optional, circular pfp)
     <h1 class="name">…</h1>
     <p class="handle">…</p>
     <p class="bio">…</p> (optional)
     <div class="social-stats">
-      <span class="stat-pill stat-likes">…</span>
+      <button class="stat-pill stat-likes stat-like-action" type="button" data-n4n-like-btn>…</button>
       <span class="stat-pill stat-views">…</span>
       <span class="stat-pill stat-friends">…</span>
     </div>
@@ -21,16 +19,16 @@ export const DATA_PAGE_MARKUP_REFERENCE = `
         <h2>…</h2>
         <span class="mood">…</span> (optional)
       </div>
-      <div class="song-grid">
-        <a class="song-card" href="STREAM_URL_FROM_DATA" target="_blank" rel="noreferrer">
-          <div class="song-art"><img src="COVER_URL_FROM_DATA" alt="" loading="lazy" /></div>
+      <div class="song-grid"> or <div class="song-grid song-scroll"> (horizontal)
+        <a class="song-card" href="STREAM_URL" target="_blank" rel="noreferrer">
+          <div class="song-art"><img src="COVER_URL" alt="" loading="lazy" /></div>
           <div class="song-info">
             <span class="song-title">…</span>
             <span class="song-artist">…</span>
           </div>
           <span class="platform-dot" title="platform"></span>
         </a>
-        <p class="empty">…</p> (when a section has no songs)
+        <p class="empty">…</p>
       </div>
     </section>
   </main>
@@ -74,9 +72,11 @@ export function generateProfileHtml(profile: UserProfile): string {
           <span class="song-artist">${esc(song.artist)}</span>
         </div>
         ${platformDot(song.platform)}
-      </a>`
+      </a>`,
         )
         .join('\n')
+
+      const gridClass = section.layout === 'scroll' ? 'song-grid song-scroll' : 'song-grid'
 
       return `
   <section class="section">
@@ -84,20 +84,25 @@ export function generateProfileHtml(profile: UserProfile): string {
       <h2>${esc(section.name)}</h2>
       ${section.mood ? `<span class="mood">${esc(section.mood)}</span>` : ''}
     </div>
-    <div class="song-grid">
+    <div class="${gridClass}">
       ${songs || '<p class="empty">This section is empty.</p>'}
     </div>
   </section>`
     })
     .join('\n')
 
+  const avatarHtml = profile.avatar
+    ? `<img class="avatar" src="${esc(profile.avatar)}" alt="${esc(profile.displayName)}" />`
+    : ''
+
   return `<div class="page">
   <header class="hero">
+    ${avatarHtml}
     <h1 class="name">${esc(profile.displayName || 'Your Name')}</h1>
     <p class="handle">@${esc(profile.username || 'handle')}</p>
     ${profile.bio ? `<p class="bio">${esc(profile.bio)}</p>` : ''}
     <div class="social-stats">
-      <span class="stat-pill stat-likes"><strong>${likes}</strong> likes</span>
+      <button class="stat-pill stat-likes stat-like-action" type="button" data-n4n-like-btn><strong>${likes}</strong> likes</button>
       <span class="stat-pill stat-views"><strong>${views}</strong> views</span>
       <span class="stat-pill stat-friends"><strong>${friends}</strong> friends</span>
     </div>
@@ -132,6 +137,14 @@ body {
 
 /* ---- Hero ---- */
 .hero { margin-bottom: 2.5rem; }
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 0.75rem;
+  border: 2px solid rgba(255,255,255,0.12);
+}
 .name { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.02em; }
 .handle { opacity: 0.55; margin-top: 0.3rem; }
 .bio { margin-top: 0.6rem; max-width: 55ch; opacity: 0.85; }
@@ -153,6 +166,12 @@ body {
   opacity: 0.9;
 }
 .stat-pill strong { font-size: 0.82rem; }
+.stat-like-action {
+  cursor: pointer;
+  font-family: inherit;
+  position: relative;
+  z-index: 2;
+}
 
 /* ---- Sections ---- */
 .sections { display: grid; gap: 2rem; }
@@ -188,6 +207,21 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 0.75rem;
+}
+
+.song-scroll {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+.song-scroll .song-card {
+  min-width: 170px;
+  max-width: 200px;
+  flex-shrink: 0;
+  scroll-snap-align: start;
 }
 
 .song-card {
@@ -239,5 +273,6 @@ body {
 @media (max-width: 640px) {
   .page { padding: 1.5rem 1rem 3rem; }
   .song-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .avatar { width: 60px; height: 60px; }
 }`
 }

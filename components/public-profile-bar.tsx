@@ -58,18 +58,19 @@ export function PublicProfileBar({ profileId, profileUsername, themeCss = '' }: 
     <div className="n4n-public-bar fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-black/80 backdrop-blur-md">
       {!!themeCss.trim() && <style>{themeCss}</style>}
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-1.5 text-sm font-bold text-white/90 hover:text-white">
+        <div className="flex items-center gap-2 pr-1">
+          <Link href="/" className="flex items-center gap-1.5 text-xs font-bold text-white/90 hover:text-white">
             <Music className="h-4 w-4" />
             Niche4Niche
           </Link>
-          <span className="text-sm text-white/60">@{profileUsername}</span>
+          <span className="text-xs text-white/60">@{profileUsername}</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleLike}
             disabled={!user || isOwnProfile}
+            style={{ display: 'inline-flex', visibility: 'visible', opacity: 1 }}
             className={`n4n-public-bar-like inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               liked
                 ? 'bg-pink-500/20 text-pink-400'
@@ -105,7 +106,7 @@ export function PublicProfileBar({ profileId, profileUsername, themeCss = '' }: 
           {!user && (
             <Link
               href="/signup"
-              className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70 hover:bg-white/20 hover:text-white transition-colors"
+              className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/20 hover:text-white"
             >
               Sign up to like
             </Link>
